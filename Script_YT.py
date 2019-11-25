@@ -25,7 +25,7 @@ with open('Data/US_category_id.json', 'r') as myfile:
     US_id=myfile.read()
 US_id_p = json.loads(US_id)
 
-#Extracting  id and title from the json
+#Extracting  id and title from the json 
 for row in US_id_p['items']:
         print(row['id'] + " : " + row["snippet"]["title"])
 
@@ -57,10 +57,13 @@ US_df["category_id"]=US_df['category_id'].map(category).fillna(US_df['category_i
 #Explore data
 pp.ProfileReport(US_df) #Run this only on Jupyter
 
+US_df["category_id"].value_counts().plot("pie")
+
+
 #Changing data types of date variables
 US_df["publish_time"]=pd.to_datetime(US_df["publish_time"])
 US_df["trending_date"]=pd.to_datetime(US_df["trending_date"], format="%y.%d.%m")
-US_df["trending_date"]
+US_df["like_dislike_ratio"]=US_df["likes"]/US_df["dislikes"]
 
 
 #Checking for duplicated rows
@@ -80,3 +83,37 @@ from sklearn.ensemble import RandomForestClassifier
 random_forest_classifier = RandomForestClassifier()
 random_forest_classifier.fit(X_train,y_train)
 y_pred_rfc = random_forest_classifier.predict(X_test)
+
+from sklearn.metrics import confusion_matrix
+cm_random_forest_classifier = confusion_matrix(y_test,y_pred_rfc)
+print(cm_random_forest_classifier,end="\n\n")
+
+numerator = cm_random_forest_classifier[0][0] + cm_random_forest_classifier[15][15]
+denominator = sum(cm_random_forest_classifier[0]) + sum(cm_random_forest_classifier[15])
+acc_svc = (numerator/denominator) * 100
+print("Accuracy : ",round(acc_svc,2),"%")
+
+
+from xgboost import XGBClassifier
+xgb_classifier = XGBClassifier()
+xgb_classifier.fit(X_train,y_train)
+y_pred_xgb = xgb_classifier.predict(X_test)
+
+cm_xgb_classifier = confusion_matrix(y_test,y_pred_xgb)
+print(cm_xgb_classifier,end='\n\n')
+
+numerator = cm_xgb_classifier[0][0] + cm_xgb_classifier[15][15]
+denominator = sum(cm_xgb_classifier[0]) + sum(cm_xgb_classifier[15])
+acc_xgb = (numerator/denominator) * 100
+print("Accuracy : ",round(acc_xgb,2),"%")
+#outliers
+
+import seaborn as sns
+sns.boxplot(x=US_df['like_dislike_ratio'])
+
+from scipy import stats
+z = np.abs(stats.zscore(US_df["likes"]))
+print(z)
+print(np.where(z > 20))
+
+
