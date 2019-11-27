@@ -15,8 +15,7 @@ import pandas as pd
 import json
 import numpy as np
 import pandas_profiling as pp
-import pytz
-import datetime
+
 
 
 #Get data
@@ -151,24 +150,22 @@ analyser = SentimentIntensityAnalyzer()
 
 vader = []
 for title in US_df.title:
-    vader.append(analyser.polarity_scores(title))
-
-textblob = []
-
+    vader_score = analyser.polarity_scores(title)
+    vader.append(vader_score)
+        
+textblob_polarity = []
 for title in US_df.title:
-    blob = TextBlob(title)     
-    textblob.append(blob.sentiment)
-    
-textblob[0:5]
-vader[0:5]
+    textblob_score = TextBlob(title)
+    textblob_polarity.append(textblob_score.sentiment.polarity)
 
-Names = ['title_polarity', 'title_subjectivity']
-df = pd.DataFrame.from_records(textblob, columns=Names)
+textblob_subjectivity = []
+for title in US_df.title:
+    textblob_score = TextBlob(title)
+    textblob_subjectivity.append(textblob_score.sentiment.subjectivity)
 
-US_df['title_polarity'] = df.title_polarity
-US_df['title_subjectivity'] = df.title_subjectivity
+US_df["title_polarity"] = textblob_polarity
+US_df["title_subjectivity"] = textblob_subjectivity
 
-US_df.head()
 
 import matplotlib.pyplot as plt
 plot_data = US_df[US_df.title_polarity != 0]
