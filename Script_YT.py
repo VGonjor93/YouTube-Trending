@@ -69,6 +69,7 @@ US_df["dislikes_per_view"]=US_df["dislikes"]/US_df["views"]
 US_df["publish_time"] = US_df["publish_time"].dt.tz_convert(None)
 US_df['publish_to_trending'] = US_df['trending_date']-US_df['publish_time']
 US_df['publish_to_trending'].plot
+
 #Explore data
 pp.ProfileReport(US_df) #Run this only on Jupyter
 
@@ -95,37 +96,6 @@ US_df['category_id'].value_counts().plot("bar")
 US_df['channel_title'].value_counts().plot("bar")
 
 
-#Modeling
-from sklearn.model_selection import train_test_split
-X_train, X_test, y_train, y_test = train_test_split(US_df.drop(["tags", "channel_title", "title", "category_id", "video_id", "thumbnail_link", "description", "trending_date", "publish_time"], axis = 1), US_df["category_id"], test_size=0.3)
-
-from sklearn.ensemble import RandomForestClassifier
-random_forest_classifier = RandomForestClassifier()
-random_forest_classifier.fit(X_train,y_train)
-y_pred_rfc = random_forest_classifier.predict(X_test)
-
-from sklearn.metrics import confusion_matrix
-cm_random_forest_classifier = confusion_matrix(y_test,y_pred_rfc)
-print(cm_random_forest_classifier,end="\n\n")
-
-numerator = cm_random_forest_classifier[0][0] + cm_random_forest_classifier[15][15]
-denominator = sum(cm_random_forest_classifier[0]) + sum(cm_random_forest_classifier[15])
-acc_svc = (numerator/denominator) * 100
-print("Accuracy : ",round(acc_svc,2),"%")
-
-
-from xgboost import XGBClassifier
-xgb_classifier = XGBClassifier()
-xgb_classifier.fit(X_train,y_train)
-y_pred_xgb = xgb_classifier.predict(X_test)
-
-cm_xgb_classifier = confusion_matrix(y_test,y_pred_xgb)
-print(cm_xgb_classifier,end='\n\n')
-
-numerator = cm_xgb_classifier[0][0] + cm_xgb_classifier[15][15]
-denominator = sum(cm_xgb_classifier[0]) + sum(cm_xgb_classifier[15])
-acc_xgb = (numerator/denominator) * 100
-print("Accuracy : ",round(acc_xgb,2),"%")
 #outliers
 
 import seaborn as sns
@@ -135,10 +105,6 @@ from scipy import stats
 z = np.abs(stats.zscore(US_df["likes"]))
 print(z)
 print(np.where(z > 20))
-
-
-print(pd.Timedelta(US_df["trending_date"] - US_df["publish_time"]).days)
-
 
 
 #Sentiment Analysis
@@ -187,3 +153,126 @@ plt.show()
 
     
 #CLUSTERING
+from sklearn.cluster import MiniBatchKMeans
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.decomposition import PCA
+from sklearn.decomposition import IncrementalPCA
+
+US_df["description"] = US_df["description"].replace(np.nan, '', regex=True)
+description = list(US_df["description"])
+
+#No Stop Words(NSW)
+from nltk.corpus import stopwords
+import nltk
+nltk.download('stopwords')
+english_stop_words = stopwords.words('english')
+def remove_stop_words(corpus):
+    removed_stop_words = []
+    for description in corpus:
+        removed_stop_words.append(
+            ' '.join([word for word in description.split() 
+                      if word not in english_stop_words])
+        )
+    return removed_stop_words
+
+description = remove_stop_words(description)
+
+#Lemmatization
+def get_lemmatized_text(corpus):
+    from nltk.stem import WordNetLemmatizer
+    lemmatizer = WordNetLemmatizer()
+    return [' '.join([lemmatizer.lemmatize(word) for word in description.split()]) for description in corpus]
+
+import nltk
+nltk.download('wordnet')
+description = get_lemmatized_text(description)
+
+#TF-IDF
+vec = TfidfVectorizer(stop_words="english")
+vec.fit(description)
+features = vec.transform(description)
+
+US_df['category_id'].nunique()
+cls = MiniBatchKMeans(n_clusters=16, random_state=0)
+cls.fit(features)
+cls.predict(features)
+
+from sklearn.metrics import homogeneity_score
+homogeneity_score(US_df.category_id, cls.predict(features))
+from sklearn.metrics import completeness_score
+completeness_score(US_df.category_id, cls.predict(features))
+
+# reduce the features to 2D
+ipca = IncrementalPCA(n_components=2, batch_size = 100)
+reduced_features = ipca.fit_transform(features.toarray())
+# reduce the cluster centers to 2D
+reduced_cluster_centers = ipca.transform(cls.cluster_centers_)
+
+plt.scatter(features[:,0], features[:,1], c=cls.predict(features))
+plt.scatter(cls.cluster_centers_[:, 0], cls.cluster_centers_[:,1], marker='x', s=150, c='b')
+
+
+#CLUSTERING TITLE
+
+#TF-IDF
+vec = TfidfVectorizer(stop_words="english")
+vec.fit(US_df["title"])
+features = vec.transform(US_df["title"])
+
+US_df['category_id'].nunique()
+cls = MiniBatchKMeans(n_clusters=16, random_state=0)
+cls.fit(features)
+cls.predict(features)
+
+from sklearn.metrics import homogeneity_score
+homogeneity_score(US_df.category_id, cls.predict(features))
+from sklearn.metrics import completeness_score
+completeness_score(US_df.category_id, cls.predict(features))
+
+
+#BAG OF WORDS
+US_df["description"] = US_df["description"].replace(np.nan, '', regex=True)
+description = list(US_df["description"])
+
+from nltk.tokenize import word_tokenize
+import string
+
+tokenized_sents = [word_tokenize(i) for i in description]
+tokenized_sents = [[word.lower() for word in text.split()] for text in description]
+
+def remove_punctuation(from_text):
+    table = str.maketrans('', '', string.punctuation)
+    stripped = [w.translate(table) for w in from_text]
+    return stripped
+
+tokenized_sents = [remove_punctuation(i) for i in tokenized_sents]
+
+from nltk.corpus import stopwords
+
+tokenized_sents = [remove_stop_words(i) for i in tokenized_sents]
+
+wordfreq = {}
+for sentence in tokenized_sents:
+    for token in sentence:
+        if token not in wordfreq.keys():
+            wordfreq[token] = 1
+        else:
+            wordfreq[token] += 1
+
+key_to_delete = max(wordfreq, key=lambda k: wordfreq[k])
+del wordfreq[key_to_delete]
+
+def BOW(from_text):
+    tokenized_sents = [word_tokenize(i) for i in description]
+    tokenized_sents = [[word.lower() for word in text.split()] for text in description]
+    tokenized_sents = [remove_punctuation(i) for i in tokenized_sents]
+    tokenized_sents = [remove_stop_words(i) for i in tokenized_sents]
+    wordfreq = {}
+    for sentence in tokenized_sents:
+        for token in sentence:
+            if token not in wordfreq.keys():
+                wordfreq[token] = 1
+            else:
+                wordfreq[token] += 1
+    return wordfreq
+    
