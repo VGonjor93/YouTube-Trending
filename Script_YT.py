@@ -263,8 +263,8 @@ key_to_delete = max(wordfreq, key=lambda k: wordfreq[k])
 del wordfreq[key_to_delete]
 
 def BOW(from_text):
-    tokenized_sents = [word_tokenize(i) for i in description]
-    tokenized_sents = [[word.lower() for word in text.split()] for text in description]
+    tokenized_sents = [word_tokenize(i) for i in from_text]
+    tokenized_sents = [[word.lower() for word in text.split()] for text in from_text]
     tokenized_sents = [remove_punctuation(i) for i in tokenized_sents]
     tokenized_sents = [remove_stop_words(i) for i in tokenized_sents]
     wordfreq = {}
@@ -274,5 +274,111 @@ def BOW(from_text):
                 wordfreq[token] = 1
             else:
                 wordfreq[token] += 1
+    del wordfreq['']
     return wordfreq
-    
+
+US_BOW = BOW(description)
+
+
+df2 = US_df['description'].groupby(US_df['category_id']).unique().apply(pd.Series)
+df2 = df2.replace(np.nan, '', regex=True)
+
+cat_list = df2.values.tolist()
+desc_1 = cat_list[0]
+desc_2 = cat_list[1]
+desc_10 = cat_list[2]
+desc_15 = cat_list[3]
+desc_17 = cat_list[4]
+desc_19 = cat_list[5]
+desc_20 = cat_list[6]
+desc_22 = cat_list[7]
+desc_23 = cat_list[8]
+desc_24 = cat_list[9]
+desc_25 = cat_list[10]
+desc_26 = cat_list[11]
+desc_27 = cat_list[12]
+desc_28 = cat_list[13]
+desc_29 = cat_list[14]
+desc_43 = cat_list[15]
+
+
+BOW_1 = BOW(desc_1)
+BOW_2 = BOW(desc_2)
+BOW_10 = BOW(desc_10)
+BOW_15 = BOW(desc_15)
+BOW_17 = BOW(desc_17)
+BOW_19 = BOW(desc_19)
+BOW_20 = BOW(desc_20)
+BOW_22 = BOW(desc_22)
+BOW_23 = BOW(desc_23)
+BOW_24 = BOW(desc_24)
+BOW_25 = BOW(desc_25)
+BOW_26 = BOW(desc_26)
+BOW_27 = BOW(desc_27)
+BOW_28 = BOW(desc_28)
+BOW_29 = BOW(desc_29)
+BOW_43 = BOW(desc_43)
+
+from wordcloud import WordCloud
+import matplotlib.pyplot as plt
+import matplotlib.pyplot as plt
+
+wc = WordCloud(background_color="white",width=1000,height=1000, max_words=10,relative_scaling=0.5,normalize_plurals=False).generate_from_frequencies(BOW_2)
+plt.imshow(wc)
+
+#K MEANS TEST
+from sklearn.cluster import MiniBatchKMeans
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.metrics import completeness_score
+from sklearn.metrics import homogeneity_score
+
+US_df["description"] = US_df["description"].replace(np.nan, '', regex=True)
+description = list(US_df["description"])
+
+
+#Lemmatization
+def get_lemmatized_text(corpus):
+    from nltk.stem import WordNetLemmatizer
+    lemmatizer = WordNetLemmatizer()
+    return [' '.join([lemmatizer.lemmatize(word) for word in description.split()]) for description in corpus]
+
+import nltk
+nltk.download('wordnet')
+description = get_lemmatized_text(description)
+
+#TF-IDF
+vec = TfidfVectorizer(stop_words="english")
+vec.fit(description)
+features = vec.transform(description)
+
+US_df['category_id'].nunique()
+cls = MiniBatchKMeans(n_clusters=500, random_state=0)
+cls.fit(features)
+cls.predict(features)
+homogeneity_score(US_df.category_id, cls.predict(features))
+completeness_score(US_df.category_id, cls.predict(features))
+
+#K-means = 16 ->  0.07 / 0.09
+# ------------------------- #
+#K-means = 1  -> -2.44 / 1.00
+#K-means = 2  ->  0.01 / 0.04
+#K-means = 3  ->  0.01 / 0.04
+#K-means = 4  ->  0.04 / 0.09
+#K-means = 5  ->  0.04 / 0.08
+#K-means = 6  ->  0.05 / 0.11
+#K-means = 7  ->  0.03 / 0.07
+#K-means = 8  ->  0.07 / 0.12
+#K-means = 9  ->  0.08 / 0.13
+#K-means = 10 ->  0.07 / 0.13
+#K-means = 11 ->  0.06 / 0.09
+#K-means = 12 ->  0.07 / 0.13
+#K-means = 13 ->  0.07 / 0.10
+#K-means = 14 ->  0.07 / 0.09
+#K-means = 15 ->  0.08 / 0.13
+#K-means = 20 ->  0.08 / 0.14
+#K-means = 30 ->  0.13 / 0.15
+#K-means = 40 ->  0.13 / 0.15
+#K-means = 45 ->  0.13 / 0.16
+#K-means = 50 ->  0.05 / 0.30
+#K-means = 100->  0.17 / 0.19
+#K-means = 500->  0.38 / 0.27
