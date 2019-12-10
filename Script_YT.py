@@ -382,3 +382,16 @@ completeness_score(US_df.category_id, cls.predict(features))
 #K-means = 50 ->  0.05 / 0.30
 #K-means = 100->  0.17 / 0.19
 #K-means = 500->  0.38 / 0.27
+
+
+
+#Preparing DF for Tableau
+
+Tableau_df = US_df
+Tableau_df.title = Tableau_df.title.apply(lambda x: x.replace(',',''))
+Tableau_df.channel_title = Tableau_df.channel_title.apply(lambda x: x.replace(',',''))
+Tableau_df.tags = Tableau_df.tags.apply(lambda x: x.replace(',',''))
+Tableau_df.thumbnail_link = Tableau_df.thumbnail_link.apply(lambda x: x.replace(',',''))
+Tableau_df.description = Tableau_df.description.apply(lambda x: x.replace(',',''))
+
+Tableau_df.to_csv(r'Data\\Tableau_df.csv')
