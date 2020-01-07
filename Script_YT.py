@@ -25,7 +25,7 @@ with open('Data/US_category_id.json', 'r') as myfile:
     US_id=myfile.read()
 US_id_p = json.loads(US_id)
 
-#Extracting  id and title from the json 
+#Extracting  id and title from the json
 for row in US_id_p['items']:
         print(row['id'] + " : " + row["snippet"]["title"])
 
@@ -60,11 +60,11 @@ US_df["category_id"]=US_df['category_id'].map(category).fillna(US_df['category_i
 #Changing data types of date variables and adding new vars
 US_df["publish_time"]=pd.to_datetime(US_df["publish_time"])
 US_df["trending_date"]=pd.to_datetime(US_df["trending_date"], format="%y.%d.%m")
-US_df["like_dislike_ratio"]=US_df["likes"]/(US_df["likes"] + US_df["dislikes"])
-US_df["comments_per_view"]=US_df["comment_count"]/US_df["views"]
-US_df["likes_dislikes_per_view"]=(US_df["likes"] + US_df["dislikes"])/US_df["views"]
-US_df["likes_per_view"]=US_df["likes"]/US_df["views"]
-US_df["dislikes_per_view"]=US_df["dislikes"]/US_df["views"]
+#US_df["like_dislike_ratio"]=US_df["likes"]/(US_df["likes"] + US_df["dislikes"])
+US_df["comments_engagement"]=US_df["comment_count"]/US_df["views"]*100
+#US_df["likes_dislikes_per_view"]=(US_df["likes"] + US_df["dislikes"])/US_df["views"]
+US_df["likes_engagement"]=US_df["likes"]/US_df["views"]*100
+US_df["dislikes_engagement"]=US_df["dislikes"]/US_df["views"]*100
 
 US_df["publish_time"] = US_df["publish_time"].dt.tz_convert(None)
 US_df['publish_to_trending'] = US_df['trending_date']-US_df['publish_time']
@@ -81,11 +81,11 @@ sns.distplot(np.log(US_df['dislikes']+1))
 sns.distplot(np.log(US_df['comment_count']+1))
 sns.distplot(np.log(US_df['views']+1))
 
-sns.distplot(np.log(US_df['like_dislike_ratio']+1))
-sns.distplot(np.log(US_df['comments_per_view']+1))
-sns.distplot(np.log(US_df['likes_dislikes_per_view']+1))
-sns.distplot(np.log(US_df['likes_per_view']+1))
-sns.distplot(np.log(US_df['dislikes_per_view']+1))
+#sns.distplot(np.log(US_df['like_dislike_ratio']+1))
+sns.distplot(np.log(US_df['comments_engagement']+1))
+#sns.distplot(np.log(US_df['likes_dislikes_per_view']+1))
+sns.distplot(np.log(US_df['likes_engagement']+1))
+sns.distplot(np.log(US_df['dislikes_engagement']+1))
 
 #Checking for duplicated rows
 duplicateRowsDF = US_df[US_df.duplicated()]
@@ -93,13 +93,10 @@ print(duplicateRowsDF)
 US_df=US_df.drop_duplicates()
 
 US_df['category_id'].value_counts().plot("bar")
-US_df['channel_title'].value_counts().plot("bar")
+#US_df['channel_title'].value_counts().plot("bar")
 
 
 #outliers
-
-import seaborn as sns
-sns.boxplot(x=US_df['like_dislike_ratio'])
 
 from scipy import stats
 z = np.abs(stats.zscore(US_df["likes"]))
@@ -147,7 +144,7 @@ plot_data.title_polarity.hist(bins=[-1, -0.9, -0.8, -0.7, -0.6, -0.5, -0.4, -0.3
              ax=ax,
              color="purple")
 
-plt.title("Polarity UPR tweet")
+plt.title("Video Title Polarity")
 
 plt.show()
 
@@ -155,7 +152,6 @@ plt.show()
 #CLUSTERING
 from sklearn.cluster import MiniBatchKMeans
 from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.decomposition import PCA
 from sklearn.decomposition import IncrementalPCA
 
 US_df["description"] = US_df["description"].replace(np.nan, '', regex=True)
@@ -321,7 +317,6 @@ BOW_43 = BOW(desc_43)
 
 from wordcloud import WordCloud
 import matplotlib.pyplot as plt
-import matplotlib.pyplot as plt
 
 wc = WordCloud(background_color="white",width=1000,height=1000, max_words=10,relative_scaling=0.5,normalize_plurals=False).generate_from_frequencies(BOW_2)
 plt.imshow(wc)
@@ -386,12 +381,100 @@ completeness_score(US_df.category_id, cls.predict(features))
 
 
 #Preparing DF for Tableau
-
+US_df["description"] = US_df["description"].replace(np.nan, '', regex=True)
 Tableau_df = US_df
 Tableau_df.title = Tableau_df.title.apply(lambda x: x.replace(',',''))
 Tableau_df.channel_title = Tableau_df.channel_title.apply(lambda x: x.replace(',',''))
 Tableau_df.tags = Tableau_df.tags.apply(lambda x: x.replace(',',''))
 Tableau_df.thumbnail_link = Tableau_df.thumbnail_link.apply(lambda x: x.replace(',',''))
 Tableau_df.description = Tableau_df.description.apply(lambda x: x.replace(',',''))
-
+Tableau_df["category_id"]
+Tableau_df["category_id"]=Tableau_df['category_id'].map(category).fillna(Tableau_df['category_id'])
 Tableau_df.to_csv(r'Data\\Tableau_df.csv')
+
+
+#BOW_list = [BOW_1, BOW_2, BOW_10, BOW_15, BOW_17, BOW_19, BOW_20, BOW_22, BOW_23, BOW_24, BOW_25, BOW_26, BOW_27, BOW_28, BOW_29, BOW_43]
+#BOW_df = pd.concat([pd.Series(d) for d in BOW_list], axis=1).fillna(0)
+#BOW_df.columns = ["1", "2", "10", "15", "17", "19", "20", "22", "23", "24", "25", "26", "27", "28", "29", "43"]
+#BOW_df.columns = ["Film & Animation", "Autos & Vehicles" , "Music", "Pets & Animals", "Sports", "Travel & Events", "Gaming", "People & Blogs", "Comedy", "Entertainment", "News & Politics", "Howto & Style", "Education", "Science & Technology", "Nonprofits & Activism", "Shows"]
+#BOW_df.to_csv(r'Data\\BOW_df.csv')
+
+BOW_1_df = pd.DataFrame(list(BOW_1.items()))
+BOW_1_df = BOW_1_df.sort_values(1, ascending = False).head(20)
+print(BOW_1_df)
+BOW_1_df.to_csv(r'Data\\BOW_1.csv')
+
+BOW_2_df = pd.DataFrame(list(BOW_2.items()))
+BOW_2_df = BOW_2_df.sort_values(1, ascending = False).head(20)
+print(BOW_2_df)
+BOW_2_df.to_csv(r'Data\\BOW_2.csv')
+
+BOW_10_df = pd.DataFrame(list(BOW_10.items()))
+BOW_10_df = BOW_10_df.sort_values(1, ascending = False).head(20)
+print(BOW_10_df)
+BOW_10_df.to_csv(r'Data\\BOW_10.csv')
+
+BOW_15_df = pd.DataFrame(list(BOW_15.items()))
+BOW_15_df = BOW_15_df.sort_values(1, ascending = False).head(20)
+print(BOW_15_df)
+BOW_15_df.to_csv(r'Data\\BOW_15.csv')
+
+BOW_17_df = pd.DataFrame(list(BOW_17.items()))
+BOW_17_df = BOW_17_df.sort_values(1, ascending = False).head(20)
+print(BOW_17_df)
+BOW_17_df.to_csv(r'Data\\BOW_17.csv')
+
+BOW_19_df = pd.DataFrame(list(BOW_19.items()))
+BOW_19_df = BOW_19_df.sort_values(1, ascending = False).head(20)
+print(BOW_19_df)
+BOW_19_df.to_csv(r'Data\\BOW_19.csv')
+
+BOW_20_df = pd.DataFrame(list(BOW_20.items()))
+BOW_20_df = BOW_20_df.sort_values(1, ascending = False).head(20)
+print(BOW_20_df)
+BOW_20_df.to_csv(r'Data\\BOW_20.csv')
+
+BOW_22_df = pd.DataFrame(list(BOW_22.items()))
+BOW_22_df = BOW_22_df.sort_values(1, ascending = False).head(20)
+print(BOW_22_df)
+BOW_22_df.to_csv(r'Data\\BOW_22.csv')
+
+BOW_23_df = pd.DataFrame(list(BOW_23.items()))
+BOW_23_df = BOW_23_df.sort_values(1, ascending = False).head(20)
+print(BOW_23_df)
+BOW_23_df.to_csv(r'Data\\BOW_23.csv')
+
+BOW_24_df = pd.DataFrame(list(BOW_24.items()))
+BOW_24_df = BOW_24_df.sort_values(1, ascending = False).head(20)
+print(BOW_24_df)
+BOW_24_df.to_csv(r'Data\\BOW_24.csv')
+
+BOW_25_df = pd.DataFrame(list(BOW_25.items()))
+BOW_25_df = BOW_25_df.sort_values(1, ascending = False).head(20)
+print(BOW_25_df)
+BOW_25_df.to_csv(r'Data\\BOW_25.csv')
+
+BOW_26_df = pd.DataFrame(list(BOW_26.items()))
+BOW_26_df = BOW_26_df.sort_values(1, ascending = False).head(20)
+print(BOW_26_df)
+BOW_26_df.to_csv(r'Data\\BOW_26.csv')
+
+BOW_27_df = pd.DataFrame(list(BOW_27.items()))
+BOW_27_df = BOW_27_df.sort_values(1, ascending = False).head(20)
+print(BOW_27_df)
+BOW_27_df.to_csv(r'Data\\BOW_27.csv')
+
+BOW_28_df = pd.DataFrame(list(BOW_28.items()))
+BOW_28_df = BOW_28_df.sort_values(1, ascending = False).head(20)
+print(BOW_28_df)
+BOW_28_df.to_csv(r'Data\\BOW_28.csv')
+
+BOW_29_df = pd.DataFrame(list(BOW_29.items()))
+BOW_29_df = BOW_29_df.sort_values(1, ascending = False).head(20)
+print(BOW_29_df)
+BOW_29_df.to_csv(r'Data\\BOW_29.csv')
+
+BOW_43_df = pd.DataFrame(list(BOW_43.items()))
+BOW_43_df = BOW_43_df.sort_values(1, ascending = False).head(20)
+print(BOW_43_df)
+BOW_43_df.to_csv(r'Data\\BOW_43.csv')
